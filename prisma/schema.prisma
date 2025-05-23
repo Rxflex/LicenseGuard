@@ -1,0 +1,74 @@
+generator client {
+  provider      = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  name        String
+  role        UserRole  @default(MODERATOR)
+  permissions Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  creator     User?     @relation("UserCreator", fields: [createdBy], references: [id])
+  created     User[]    @relation("UserCreator")
+  licenses    License[]
+
+  @@map("users")
+}
+
+model License {
+  id          String        @id @default(cuid())
+  key         String        @unique @default(uuid())
+  name        String?
+  description String?
+  status      LicenseStatus @default(ACTIVE)
+  expiresAt   DateTime
+  allowedIps  Json? // Array of IP addresses or ["*"] for any
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   String
+  creator     User          @relation(fields: [createdBy], references: [id])
+  logs        LicenseLog[]
+
+  @@map("licenses")
+}
+
+model LicenseLog {
+  id        String    @id @default(cuid())
+  licenseId String
+  license   License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  ip        String
+  userAgent String?
+  result    LogResult
+  createdAt DateTime  @default(now())
+
+  @@map("license_logs")
+}
+
+enum UserRole {
+  ADMIN
+  MODERATOR
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  BLOCKED
+  DELETED
+}
+
+enum LogResult {
+  VALID
+  EXPIRED
+  BLOCKED
+  INVALID
+  IP_BLOCKED
+}
